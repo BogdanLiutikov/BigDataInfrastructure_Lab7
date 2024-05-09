@@ -2,3 +2,5 @@ __pycache__/
 venv/
 *.pickle
 *.gz
+data/*
+!data/example.csv
