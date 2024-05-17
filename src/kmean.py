@@ -12,11 +12,16 @@ from pyspark.ml.linalg import Vectors
 from pyspark.sql import DataFrame, Row, SparkSession
 from pyspark.sql.functions import col
 from configparser import ConfigParser
+from .logger import Logger
+
+
 
 findspark.init()
 
+
 class KMean:
     def __init__(self, config_path: str = None) -> None:
+        self.logger = Logger(True).get_logger(__name__)
         config = ConfigParser()
         config.read('config.ini')
         spark_config = config['spark']
@@ -38,7 +43,7 @@ class KMean:
     def load_data(self, file_path: str, limit: int = None):
         if os.path.exists('schema.pickle'):
             with open('schema.pickle', 'rb') as s:
-                print('readSchema')
+                self.logger.info('readSchema')
                 schema = pickle.load(s)
                 self.data = self.spark.read.csv(file_path, sep='\t', header=True, schema=schema)
         else:
@@ -46,9 +51,10 @@ class KMean:
                 self.data = self.spark.read.csv(file_path, sep='\t', header=True, inferSchema=True)
                 pickle.dump(self.data.schema, s)
         self.data.printSchema()
+        self.schema = self.data.schema
         if limit:
             self.data = self.data.limit(limit)
-        print('Data count: ', self.data.count())
+        self.logger.info(f'Data count: {self.data.count()}')
         return self.data
 
     def make_feature_column(self, data: DataFrame, input_columns=['energy-kcal_100g', 'fat_100g', 'proteins_100g', 'carbohydrates_100g']):
@@ -72,10 +78,14 @@ class KMean:
         return scaled_data
 
     def train(self, data: DataFrame, k: int = 5):
-        self.model = KMeans(k=k, seed=42, featuresCol='features',
-                            predictionCol='prediction').fit(data)
+        self.model = KMeans(k=k, seed=42, featuresCol='features', predictionCol='prediction').fit(data)
 
-    def predict(self, data: DataFrame):
+    def get_dataframe_fromdict(self, data: list[dict]) -> DataFrame:
+        return self.spark.createDataFrame(data, schema=self.schema)
+
+    def predict(self, data: DataFrame, scale: bool = False):
+        if scale:
+            data = self.scaler_model.transform(data)
         self.predictions = self.model.transform(data)
         return self.predictions
 
@@ -99,8 +109,6 @@ class KMean:
         centers_pandas_df['x'] = centers_pandas_df['pca_features'].apply(lambda x: x[0])
         centers_pandas_df['y'] = centers_pandas_df['pca_features'].apply(lambda x: x[1])
         centers_pandas_df = centers_pandas_df.drop(columns=['pca_features'])
-
-        print(centers_pandas_df.head())
 
         fig, ax = plt.subplots()
         labels = predictions.select('prediction').toPandas().iloc[:, 0]

@@ -4,3 +4,4 @@ venv/
 *.gz
 data/*
 !data/example.csv
+.env
