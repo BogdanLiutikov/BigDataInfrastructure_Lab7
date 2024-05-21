@@ -1,6 +1,8 @@
 from .kmean import KMean
 from .database import Database
+from .logger import Logger
 
+logger = Logger(True).get_logger(__name__)
 kmean = KMean()
 
 data = kmean.load_data('../../Lab5/Code/data/en.openfoodfacts.org.products.csv', 100)
@@ -27,3 +29,6 @@ new_prediction = new_prediction.select('features', 'prediction').toPandas().to_d
 print(new_prediction)
 s = next(db.get_session())
 db.create_record(s, new_prediction)
+
+predictions = db.get_predictions(s)
+logger.info(f'Predictions \n{predictions}')
