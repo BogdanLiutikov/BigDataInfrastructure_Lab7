@@ -16,7 +16,7 @@ class Database:
         password = os.environ.get('MSSQL_SA_PASSWORD')
         self.logger.info(f'user {user} {password}')
 
-        db_name = self.__create_database_through_master_database(user, password, 'Lab5')
+        db_name = self.__create_database_through_master_database(user, password, 'Lab6')
         connection_url = URL.create(
             "mssql+pyodbc",
             username=user,
@@ -42,7 +42,7 @@ class Database:
         models.Base.metadata.create_all(self.engine)
         self.logger.info("Все таблицы созданы")
 
-    def __create_database_through_master_database(self, user, password, database_name: str = 'Lab6'):
+    def __create_database_through_master_database(self, user, password, database_name: str = 'Lab'):
         connection_url = URL.create(
             "mssql+pyodbc",
             username=user,
