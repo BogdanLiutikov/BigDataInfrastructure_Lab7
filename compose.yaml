@@ -11,11 +11,6 @@ services:
       TZ: Europe/Moscow
     networks:
       - sharenetwork
-    # healthcheck:
-    #     test: ["CMD", "cqlsh"]
-    #     interval: 30s
-    #     timeout: 10s
-    #     retries: 5
     volumes:
       - type: volume
         source: db-data-lab7
