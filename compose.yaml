@@ -1,29 +1,31 @@
 version: '3.8'
 services:
   database:
-    image: mcr.microsoft.com/mssql/server:2022-latest
+    image: cassandra:latest
     ports:
-      - 1433:1433
-    container_name: mssql
-    hostname: mssql
+      - 9042:9042
+    container_name: cassandra
+    hostname: cassandra
+    command: bash -c "docker-entrypoint.sh & until cqlsh -f /scripts/data.cql; do sleep 5; done && tail -f /dev/null"
     environment:
-      ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
       TZ: Europe/Moscow
     networks:
       - sharenetwork
-    healthcheck:
-        test: ["CMD", "/opt/mssql-tools/bin/sqlcmd", "-S", "localhost", "-U", "${MSSQL_USER}", "-P", "${MSSQL_SA_PASSWORD}"]
-        interval: 30s
-        timeout: 10s
-        retries: 5
+    # healthcheck:
+    #     test: ["CMD", "cqlsh"]
+    #     interval: 30s
+    #     timeout: 10s
+    #     retries: 5
     volumes:
       - type: volume
-        source: db-data-lab6
-        target: /var/opt/mssql
+        source: db-data-lab7
+        target: /opt/dse/
+      - type: bind
+        source: ./src/datamart/src/main/scala/db/data.cql
+        target: /scripts/data.cql
 
 volumes:
-  db-data-lab6:
+  db-data-lab7:
 
 networks:
   sharenetwork:

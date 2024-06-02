@@ -1,34 +1,35 @@
+import findspark
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import current_timestamp
+
+from .datamart import DataMart
 from .kmean import KMean
-from .database import Database
 from .logger import Logger
 
+findspark.init()
 logger = Logger(True).get_logger(__name__)
-kmean = KMean()
 
-data = kmean.load_data('../../Lab5/Code/data/en.openfoodfacts.org.products.csv', 100)
+spark = (SparkSession.builder
+         .master('local')
+         .appName('KMean')
+         .config(map={
+             "spark.jars.packages": f"com.datastax.spark:spark-cassandra-connector_2.12:3.5.0",
+             "spark.jars": f"src/datamart/target/scala-2.12/datamart_2.12-0.1.jar",
+             "spark.cassandra.connection.host": "localhost",
+             "spark.cassandra.connection.port": "9042"
+         })
+         .getOrCreate())
 
 
-feature_data = kmean.make_feature_column(data)
-scaled_data = kmean.standard_scale(feature_data)
-kmean.train(scaled_data)
+data_mart = DataMart(spark)
 
+assembled_data = data_mart.read_dataset(path="data/example.csv", sep=",")
+assembled_data.select('id', 'energy-kcal_100g', "fat_100g",
+                      "proteins_100g", "carbohydrates_100g", 'features').show(5)
+data_mart.write_data(assembled_data.select('id', 'features'))
 
-db = Database()
+kmean = KMean(data_mart)
+kmean.train(assembled_data)
 
-new_prediction = [{'energy-kcal_100g': 150., 'fat_100g': 15.,
-                  'proteins_100g': 10., 'carbohydrates_100g': 50.},
-                  {'energy-kcal_100g': 55., 'fat_100g': 15.,
-                  'proteins_100g': 55., 'carbohydrates_100g': 13.}]
-
-dataframe = kmean.make_feature_column(kmean.get_dataframe_fromdict(new_prediction))
-
-new_prediction = kmean.predict(dataframe, scale=True)
-
-new_prediction = new_prediction.select('features', 'prediction').toPandas().to_dict(orient='records')
-
-print(new_prediction)
-s = next(db.get_session())
-db.create_record(s, new_prediction)
-
-predictions = db.get_predictions(s)
-logger.info(f'Predictions \n{predictions}')
+predict = kmean.predict(assembled_data)
+predict.select('id', 'features', 'prediction').show(5)
